@@ -1,10 +1,111 @@
-const { useEffect, useMemo, useRef, useState, useCallback } = React;
+const { useEffect, useMemo, useRef, useState } = React;
 
 function createMessageId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function App() {
+// --- Auth Screen ---
+
+function AuthScreen({ onAuth, onResetPassword }) {
+  const [mode, setMode] = useState("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      if (mode === "login") {
+        const data = await login(email, password);
+        onAuth(data.access_token);
+      } else if (mode === "signup") {
+        const data = await signup(email, password);
+        onAuth(data.access_token);
+      } else if (mode === "reset") {
+        await requestPasswordReset(email);
+        setResetSent(true);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (resetSent) {
+    return (
+      <div className="auth-screen">
+        <div className="auth-card">
+          <h1>ChatLLM Lab</h1>
+          <p className="auth-note">Se o email estiver cadastrado, voce recebera um link para redefinir sua senha.</p>
+          <button className="auth-link" onClick={() => { setMode("login"); setResetSent(false); }}>
+            Voltar ao login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="auth-screen">
+      <div className="auth-card">
+        <h1>ChatLLM Lab</h1>
+        <p className="auth-subtitle">{mode === "login" ? "Entre na sua conta" : mode === "signup" ? "Crie sua conta" : "Redefinir senha"}</p>
+
+        {error && <div className="note error">{error}</div>}
+
+        <form onSubmit={handleSubmit}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            disabled={busy}
+            autoFocus
+          />
+          {mode !== "reset" && (
+            <input
+              type="password"
+              placeholder="Senha"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              disabled={busy}
+            />
+          )}
+          <button type="submit" disabled={busy || !email.trim() || (mode !== "reset" && !password.trim())}>
+            {busy ? "Aguarde..." : mode === "login" ? "Entrar" : mode === "signup" ? "Criar conta" : "Enviar email"}
+          </button>
+        </form>
+
+        <div className="auth-links">
+          {mode === "login" && (
+            <>
+              <button className="auth-link" onClick={() => setMode("signup")}>Criar conta</button>
+              <button className="auth-link" onClick={() => setMode("reset")}>Esqueci a senha</button>
+            </>
+          )}
+          {mode === "signup" && (
+            <button className="auth-link" onClick={() => setMode("login")}>Ja tenho conta</button>
+          )}
+          {mode === "reset" && (
+            <button className="auth-link" onClick={() => setMode("login")}>Voltar ao login</button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Chat App (logged in) ---
+
+function ChatApp({ token, onLogout }) {
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -17,13 +118,13 @@ function App() {
 
   // Carregar sessoes ao montar
   useEffect(() => {
-    listSessions().then((sess) => {
+    listSessions(token).then((sess) => {
       setSessions(sess);
       if (sess.length > 0) {
         setActiveSessionId(sess[0].id);
       }
     }).catch(() => {});
-  }, []);
+  }, [token]);
 
   // Carregar mensagens da sessao ativa
   useEffect(() => {
@@ -31,7 +132,7 @@ function App() {
       setMessages([]);
       return;
     }
-    getSessionMessages(activeSessionId).then((msgs) => {
+    getSessionMessages(activeSessionId, token).then((msgs) => {
       setMessages(msgs.length > 0
         ? msgs
         : [{
@@ -47,7 +148,7 @@ function App() {
         content: "Bem-vindo ao ChatLLM Lab. Como posso ajudar voce hoje?",
       }]);
     });
-  }, [activeSessionId]);
+  }, [activeSessionId, token]);
 
   const chatHistory = useMemo(
     () => messages.filter((msg) => msg.role === "user" || msg.role === "assistant"),
@@ -73,7 +174,7 @@ function App() {
 
   const handleNewSession = async () => {
     try {
-      const session = await createSession();
+      const session = await createSession(token);
       setSessions((prev) => [session, ...prev]);
       setActiveSessionId(session.id);
     } catch (err) {
@@ -83,7 +184,7 @@ function App() {
 
   const handleDeleteSession = async (sessionId) => {
     try {
-      await deleteSession(sessionId);
+      await deleteSession(sessionId, token);
       setSessions((prev) => prev.filter((s) => s.id !== sessionId));
       if (activeSessionId === sessionId) {
         const remaining = sessions.filter((s) => s.id !== sessionId);
@@ -104,11 +205,10 @@ function App() {
     const cleaned = text.trim();
     if (!cleaned || busy) return;
 
-    // Garantir que ha uma sessao ativa
     let sessionId = activeSessionId;
     if (sessionId === null) {
       try {
-        const session = await createSession();
+        const session = await createSession(token);
         setSessions((prev) => [session, ...prev]);
         sessionId = session.id;
         setActiveSessionId(session.id);
@@ -137,6 +237,7 @@ function App() {
         message: cleaned,
         history: chatHistory,
         sessionId,
+        token,
         signal: abortController.signal,
         onDelta: (delta) => {
           setMessages((prev) =>
@@ -157,8 +258,7 @@ function App() {
         )
       );
 
-      // Recarregar sessoes para atualizar titulo
-      const updated = await listSessions();
+      const updated = await listSessions(token);
       setSessions(updated);
     } catch (err) {
       const aborted = err?.name === "AbortError";
@@ -231,6 +331,13 @@ function App() {
             </svg>
           </button>
           <div className="brand">ChatLLM Lab</div>
+          <button className="logout-btn" onClick={onLogout} title="Sair">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="13" y1="4" x2="13" y2="14" />
+              <polyline points="9,6 13,9 9,12" />
+              <line x1="4" y1="9" x2="13" y2="9" />
+            </svg>
+          </button>
         </header>
 
         <section className="messages" aria-live="polite" ref={messagesRef}>
@@ -256,6 +363,48 @@ function App() {
       </main>
     </div>
   );
+}
+
+// --- Root App ---
+
+function App() {
+  const [token, setToken] = useState(() => localStorage.getItem("chatllm_token"));
+
+  // Verificar se o token ainda e valido ao montar
+  const [checking, setChecking] = useState(true);
+  useEffect(() => {
+    if (token) {
+      getMe(token).then((user) => {
+        if (!user) {
+          localStorage.removeItem("chatllm_token");
+          setToken(null);
+        }
+      }).catch(() => {
+        localStorage.removeItem("chatllm_token");
+        setToken(null);
+      }).finally(() => setChecking(false));
+    } else {
+      setChecking(false);
+    }
+  }, []);
+
+  const handleAuth = (newToken) => {
+    localStorage.setItem("chatllm_token", newToken);
+    setToken(newToken);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("chatllm_token");
+    setToken(null);
+  };
+
+  if (checking) return null;
+
+  if (!token) {
+    return <AuthScreen onAuth={handleAuth} />;
+  }
+
+  return <ChatApp token={token} onLogout={handleLogout} />;
 }
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
