@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from backend.config import OPENROUTER_MODEL_DEFAULT
 from backend.database import get_db
-from backend.models import ChatMessage
+from backend.models import ChatMessage, ChatSession
 from backend.schemas.chat import ChatRequest, ChatResponse
 from backend.services.openrouter import OpenRouterConfigError, generate_reply, stream_reply
 
@@ -19,6 +19,41 @@ router = APIRouter()
 @router.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
+
+
+def _ensure_session(db: Session, session_id: int | None) -> ChatSession:
+    """Retorna a sessao informada ou cria uma nova."""
+    if session_id is not None:
+        session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+        if not session:
+            raise HTTPException(status_code=404, detail="Sessao nao encontrada")
+        return session
+    session = ChatSession()
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return session
+
+
+def _auto_title(session: ChatSession, db: Session) -> None:
+    """Gera titulo automatico a partir da primeira mensagem do usuario, se ainda nao foi definido."""
+    if session.title != "Nova conversa":
+        return
+    first_user_msg = (
+        db.query(ChatMessage)
+        .filter(
+            ChatMessage.session_key == str(session.id),
+            ChatMessage.role == "user",
+        )
+        .order_by(ChatMessage.created_at.asc())
+        .first()
+    )
+    if first_user_msg:
+        title = first_user_msg.content.strip()[:80]
+        if len(first_user_msg.content.strip()) > 80:
+            title += "..."
+        session.title = title
+        db.commit()
 
 
 @router.post("/api/chat", response_model=ChatResponse)
@@ -36,10 +71,14 @@ async def chat(payload: ChatRequest, db: Session = Depends(get_db)) -> ChatRespo
 
     resolved_model = payload.model or model_name or OPENROUTER_MODEL_DEFAULT
 
-    # Persistimos apenas o fluxo basico de mensagens; sessoes e titulos sao tarefa do participante.
-    db.add(ChatMessage(session_key="default", role="user", content=payload.message, model=resolved_model))
-    db.add(ChatMessage(session_key="default", role="assistant", content=reply, model=resolved_model))
+    session = _ensure_session(db, payload.session_id)
+    session_key = str(session.id)
+
+    db.add(ChatMessage(session_key=session_key, role="user", content=payload.message, model=resolved_model))
+    db.add(ChatMessage(session_key=session_key, role="assistant", content=reply, model=resolved_model))
     db.commit()
+
+    _auto_title(session, db)
 
     return ChatResponse(reply=reply, model=resolved_model)
 
@@ -66,9 +105,12 @@ async def chat_stream(payload: ChatRequest, db: Session = Depends(get_db)) -> St
             return
 
         if full_reply.strip():
+            session = _ensure_session(db, payload.session_id)
+            session_key = str(session.id)
+
             db.add(
                 ChatMessage(
-                    session_key="default",
+                    session_key=session_key,
                     role="user",
                     content=payload.message,
                     model=resolved_model,
@@ -76,13 +118,15 @@ async def chat_stream(payload: ChatRequest, db: Session = Depends(get_db)) -> St
             )
             db.add(
                 ChatMessage(
-                    session_key="default",
+                    session_key=session_key,
                     role="assistant",
                     content=full_reply,
                     model=resolved_model,
                 )
             )
             db.commit()
+
+            _auto_title(session, db)
 
         yield f"data: {json.dumps({'done': True}, ensure_ascii=True)}\n\n"
 

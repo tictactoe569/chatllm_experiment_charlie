@@ -5,14 +5,19 @@
 **Hard rule**: AI agents must not edit this file and must not draft paste-ready content for it.
 
 ## The Problem
-_State clearly what you are trying to achieve and the architectural constraints, avoiding implementation specifics of HOW to do it. Focus on WHAT and WHY._
+Devo implementar sessoes de chat com titulos automaticos e uma barra lateral no modelo de ChatLLM nesse repositorio, guardando o historico de conversa de cada sessao
 
 ## Steps
-- [ ] _Decompose the problem into actionable logical steps._
-- [ ] _Each step should represent a verifiable piece of work._
+- [ ] Leia os arquivos do projeto de backend database e frontend incluindo o App.jsx e chat.py para entender como funciona o padrao de projeto e design
+- [ ] Estruture as mudancas nos arquivos sem influenciar na logica de funcionamento da aplicacao
+- [ ] Realize as mudancas apos fazermos uma revisao do que sera feito
+- [ ] Inclua testes automatizados 
 
 ## Success Looks Like
-- [ ] _Define rigorous, observable criteria for success. E.g., The endpoint returns 200 OK with the user object, NOT Code compiles_
+- [ ] Cada chat tem seu titulo gerado automaticamente 
+- [ ] O ChatLLM possui uma barra lateral com todos os chats
+- [ ] Cada sessao de chat possui seu historico de conversa salvo
+
 
 ## Notes
 - [ ] _Any specific edge cases, libraries to consider, or potential pitfalls._

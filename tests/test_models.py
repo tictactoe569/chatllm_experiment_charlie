@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from backend.models import ChatMessage
+from backend.models import ChatMessage, ChatSession
 
 
 class TestChatMessage:
@@ -98,6 +98,57 @@ class TestChatMessage:
         after = datetime.now(timezone.utc).replace(tzinfo=None)
 
         assert before <= msg.created_at <= after
+
+
+class TestChatSession:
+    def test_create_session_defaults(self, db_session):
+        """Deve criar uma sessao com valores padrao."""
+        session = ChatSession()
+        db_session.add(session)
+        db_session.commit()
+        db_session.refresh(session)
+
+        assert session.id is not None
+        assert session.title == "Nova conversa"
+        assert isinstance(session.created_at, datetime)
+        assert isinstance(session.updated_at, datetime)
+
+    def test_session_custom_title(self, db_session):
+        """Deve criar uma sessao com titulo customizado."""
+        session = ChatSession(title="Minha sessao")
+        db_session.add(session)
+        db_session.commit()
+        db_session.refresh(session)
+
+        assert session.title == "Minha sessao"
+
+    def test_session_updated_at_updates(self, db_session):
+        """O campo updated_at deve ser atualizado ao modificar a sessao."""
+        session = ChatSession(title="Original")
+        db_session.add(session)
+        db_session.commit()
+
+        original_updated = session.updated_at
+
+        session.title = "Modificado"
+        db_session.commit()
+
+        assert session.updated_at >= original_updated
+
+    def test_session_ordered_by_updated_at(self, db_session):
+        """Sessoes devem ser ordenaveis por updated_at descendente."""
+        s1 = ChatSession(title="Antiga")
+        s2 = ChatSession(title="Recente")
+        db_session.add_all([s1, s2])
+        db_session.commit()
+
+        results = (
+            db_session.query(ChatSession)
+            .order_by(ChatSession.updated_at.desc())
+            .all()
+        )
+        assert results[0].title == "Recente"
+        assert results[1].title == "Antiga"
 
     def test_content_persists_long_text(self, db_session):
         """Deve persistir conteudos longos corretamente."""
