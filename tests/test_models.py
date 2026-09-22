@@ -2,7 +2,43 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from backend.models import ChatMessage, ChatSession
+import pytest
+
+from backend.models import ChatMessage, ChatSession, User
+
+
+class TestUser:
+    def test_create_user(self, db_session):
+        """Deve criar um usuario com email e senha hash."""
+        user = User(email="teste@teste.com", hashed_password="$2b$12$hashfake")
+        db_session.add(user)
+        db_session.commit()
+        db_session.refresh(user)
+
+        assert user.id is not None
+        assert user.email == "teste@teste.com"
+        assert user.hashed_password == "$2b$12$hashfake"
+        assert isinstance(user.created_at, datetime)
+
+    def test_user_email_unique(self, db_session):
+        """Email deve ser unico."""
+        user1 = User(email="unique@teste.com", hashed_password="hash1")
+        user2 = User(email="unique@teste.com", hashed_password="hash2")
+        db_session.add(user1)
+        db_session.commit()
+        db_session.add(user2)
+        with pytest.raises(Exception):
+            db_session.commit()
+
+    def test_query_user_by_email(self, db_session):
+        """Deve buscar usuario por email."""
+        user = User(email="busca@teste.com", hashed_password="hash")
+        db_session.add(user)
+        db_session.commit()
+
+        found = db_session.query(User).filter(User.email == "busca@teste.com").first()
+        assert found is not None
+        assert found.email == "busca@teste.com"
 
 
 class TestChatSession:
@@ -15,6 +51,7 @@ class TestChatSession:
 
         assert session.id is not None
         assert session.title == ""
+        assert session.user_id == 0
         assert isinstance(session.created_at, datetime)
         assert isinstance(session.updated_at, datetime)
 

@@ -5,6 +5,9 @@ function createMessageId() {
 }
 
 function App() {
+  const [user, setUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [initialized, setInitialized] = useState(false);
@@ -32,8 +35,31 @@ function App() {
     };
   }, []);
 
+  // Verificar auth ao montar
+  useEffect(() => {
+    getMe().then((data) => {
+      if (data) {
+        setUser(data.email);
+      }
+    }).finally(() => {
+      setAuthChecked(true);
+    });
+  }, []);
+
+  const handleAuthSuccess = (email) => {
+    setUser(email);
+    setShowAuth(false);
+  };
+
+  const handleLogout = () => {
+    logout().catch(() => {});
+    localStorage.removeItem("token");
+    setUser(null);
+  };
+
   // Carregar sessoes ao montar
   useEffect(() => {
+    if (!authChecked) return;
     listSessions().then((data) => {
       if (data.length > 0) {
         setSessions(data);
@@ -52,7 +78,7 @@ function App() {
     }).finally(() => {
       setInitialized(true);
     });
-  }, []);
+  }, [authChecked]);
 
   const loadSession = useCallback(async (sessionId) => {
     setActiveSessionId(sessionId);
@@ -199,8 +225,19 @@ function App() {
     }
   };
 
+  if (!authChecked) {
+    return null;
+  }
+
   return (
     <main className="app-shell">
+      {showAuth && (
+        <div className="modal-overlay" onClick={() => setShowAuth(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <AuthPage onAuthSuccess={handleAuthSuccess} onClose={() => setShowAuth(false)} />
+          </div>
+        </div>
+      )}
       <div className="app-layout">
         {sidebarOpen && (
           <Sidebar
@@ -227,6 +264,22 @@ function App() {
               </svg>
             </button>
             <div className="brand">ChatLLM Lab</div>
+            <div className="header-right">
+              {user ? (
+                <>
+                  <span className="header-email">{user}</span>
+                  <button className="logout-btn" onClick={handleLogout} title="Sair">
+                    Sair
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="auth-header-btn" onClick={() => setShowAuth(true)}>
+                    Entrar / Cadastrar
+                  </button>
+                </>
+              )}
+            </div>
           </header>
 
           <section className="messages" aria-live="polite" ref={messagesRef}>

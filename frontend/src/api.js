@@ -1,5 +1,58 @@
 const API_BASE = window.location.origin;
 
+// --- Auth ---
+
+async function signup(email, password) {
+  const response = await fetch(`${API_BASE}/api/auth/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.detail || "Erro ao cadastrar");
+  }
+  return response.json();
+}
+
+async function login(email, password) {
+  const response = await fetch(`${API_BASE}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.detail || "Erro ao fazer login");
+  }
+  return response.json();
+}
+
+async function logout() {
+  const token = localStorage.getItem("token");
+  const response = await fetch(`${API_BASE}/api/auth/logout`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.detail || "Erro ao fazer logout");
+  }
+  return response.json();
+}
+
+async function getMe() {
+  const token = localStorage.getItem("token");
+  if (!token) return null;
+  const response = await fetch(`${API_BASE}/api/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) return null;
+  return response.json();
+}
+
+// --- Chat ---
+
 async function sendMessageStream({ message, history, sessionId, signal, onDelta }) {
   const response = await fetch(`${API_BASE}/api/chat/stream`, {
     method: "POST",
@@ -56,6 +109,8 @@ async function sendMessageStream({ message, history, sessionId, signal, onDelta 
     }
   }
 }
+
+// --- Sessions ---
 
 async function listSessions() {
   const response = await fetch(`${API_BASE}/api/sessions`);

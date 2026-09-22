@@ -210,6 +210,103 @@
         color: var(--text);
       }
 
+      .header-right {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .header-email {
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
+
+      .logout-btn {
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        transition: background 120ms ease, color 120ms ease;
+      }
+
+      .logout-btn:hover {
+        background: var(--user-bubble);
+        color: #c0392b;
+        border-color: #c0392b;
+      }
+
+      .auth-header-btn {
+        border: 1px solid var(--accent);
+        background: transparent;
+        color: var(--accent);
+        cursor: pointer;
+        padding: 6px 16px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: background 120ms ease, color 120ms ease;
+      }
+
+      .auth-header-btn:hover {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      /* Modal */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+
+      .modal-content {
+        background: var(--bg-page);
+        border-radius: 16px;
+        padding: 32px;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      }
+
+      .auth-card-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+      }
+
+      .auth-card-modal-header .auth-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin: 0;
+        color: var(--text);
+      }
+
+      .auth-close-btn {
+        border: none;
+        background: transparent;
+        font-size: 1.5rem;
+        color: var(--muted);
+        cursor: pointer;
+        padding: 0 4px;
+        line-height: 1;
+      }
+
+      .auth-close-btn:hover {
+        color: var(--text);
+      }
+
       .app-header {
         flex-shrink: 0;
         padding: 12px 24px;
@@ -411,6 +508,78 @@
         .bubble.user { max-width: 90%; }
         .messages { padding: 20px 12px 12px; }
         .composer-wrap { padding: 8px 12px 16px; }
+      }
+
+      .auth-error {
+        background: #fff5f5;
+        color: #c0392b;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        margin-bottom: 16px;
+        border: 1px solid #fed7d7;
+      }
+
+      .auth-form {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .auth-input {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid var(--composer-border);
+        border-radius: 10px;
+        font: inherit;
+        font-size: 0.95rem;
+        outline: none;
+        background: var(--bg-page);
+        color: var(--text);
+        transition: border-color 150ms ease;
+      }
+
+      .auth-input:focus {
+        border-color: var(--accent);
+      }
+
+      .auth-btn {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 10px;
+        background: var(--accent);
+        color: #fff;
+        font: inherit;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 120ms ease;
+      }
+
+      .auth-btn:hover:not(:disabled) {
+        background: var(--accent-hover);
+      }
+
+      .auth-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .auth-toggle {
+        margin-top: 20px;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      .auth-toggle a {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      .auth-toggle a:hover {
+        text-decoration: underline;
       }    </style>
   </head>
   <body>
@@ -431,6 +600,7 @@
     <script type="text/babel" src="/frontend/src/MessageContent.jsx"></script>
     <script type="text/babel" src="/frontend/src/Composer.jsx"></script>
     <script type="text/babel" src="/frontend/src/Sidebar.jsx"></script>
+    <script type="text/babel" src="/frontend/src/AuthPage.jsx"></script>
     <script type="text/babel" src="/frontend/src/App.jsx"></script>
   </body>
 </html>
