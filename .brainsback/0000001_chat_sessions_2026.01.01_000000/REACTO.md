@@ -5,25 +5,32 @@
 **Hard rule**: AI agents must not edit this file and must not draft paste-ready content for it.
 
 ## R — Repeat (The Problem)
-_State the problem in your own words. Confirm that you share the same mental model of the goal._
+Permitir a criação d enovas sessôes, cada um com seu historico salvo.
+permitir renomear sessão e caso nao seja renomeada, criar um nome com base na primeira resposta do chat.
 
 ## E — Examples
-_Provide concrete inputs and expected outputs that demonstrate the correctness. Base them on observable behavior._
+- Abro o chat 
+- Primeira sessão como "nova conversa" 
+- Faço uma pergunta(ex : quanto é 2+2 )
+- sessão renomeada para 2+2=4
 
-- **Happy Path Input**: ...
-  **Output**: ...
-
-- **Edge Case Input**: ...
-  **Output**: ...
+- crio uma nova conversa 
+- nome da conversa como "nova conversa" 
+- clico duas vezes em cima do nome e renomeio para "chat 1"
+- nome da conversa atualizado para "chat 1"
+- Faço uma pergunta(ex : quanto é 2+2 )
+- sessão continua com nome "chat 1"
 
 ## A — Approach
-_Describe your high-level strategy conceptually. How did you design the solution?_
+o assistente criou uma tabela para criar as sessoes e cada sessao é identificada pelo sessionid para permitir guardar historico e recuperar, alem de nomear. 
 
 ## C — Code
-_Identify the most critical code changes, format as actual files, functions, or methods. Justify the intent of your design choices rather than just acknowledging the syntax changes._
+o assistente criou uma tabela para criar as sessoes e cada sessao é identificada pelo sessionid para permitir guardar historico e recuperar, alem de nomear. 
+ e foram criadas tambem sidebar para colocar cada sessao na interface
+ alem disso o titulo gerado caso nao seja nomeado eplo usuariosao os priemiros 60 caracteres da resposta
 
 ## T — Tests
-_Explain how the solution was validated, pointing to the actual test files, functions, or methods. Document any manual or automated tests._
+testei a execução, tanto criação de nova conversa, quanto renomear e mandar uma pergunta para ver se o nome continua o que eu tinha colocado.
 
-## O — Optimize
-_Address Big(O) complexity, note that sometimes it doesn't apply, trade-offs, constraints, and opportunities for future improvement._
+## O — Optimizer
+compelxidade O(n) para listar sessoes

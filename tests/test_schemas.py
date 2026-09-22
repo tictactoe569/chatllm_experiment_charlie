@@ -50,6 +50,10 @@ class TestChatRequest:
         assert len(req.history) == 2
         assert req.history[0].role == "user"
 
+    def test_valid_request_with_session_id(self):
+        req = ChatRequest(message="Ola", session_id=42)
+        assert req.session_id == 42
+
     def test_empty_message(self):
         with pytest.raises(ValidationError):
             ChatRequest(message="")
