@@ -1,9 +1,68 @@
 const API_BASE = window.location.origin;
 
+// --- Auth ---
+
+function getToken() {
+  return localStorage.getItem("chatllm_token");
+}
+
+function setToken(token) {
+  if (token) localStorage.setItem("chatllm_token", token);
+  else localStorage.removeItem("chatllm_token");
+}
+
+function authHeaders() {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function apiRegister(email, password) {
+  const resp = await fetch(`${API_BASE}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.detail || "Erro ao registrar");
+  setToken(data.access_token);
+  return data;
+}
+
+async function apiLogin(email, password) {
+  const resp = await fetch(`${API_BASE}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.detail || "Erro ao fazer login");
+  setToken(data.access_token);
+  return data;
+}
+
+async function apiMe() {
+  const token = getToken();
+  if (!token) return null;
+  const resp = await fetch(`${API_BASE}/api/auth/me`, {
+    headers: { ...authHeaders() },
+  });
+  if (!resp.ok) {
+    setToken(null);
+    return null;
+  }
+  return resp.json();
+}
+
+function apiLogout() {
+  setToken(null);
+}
+
+// --- Chat ---
+
 async function sendMessageStream({ message, history, session_key, onDelta, signal }) {
   const response = await fetch(`${API_BASE}/api/chat/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ message, history, session_key }),
     signal,
   });
@@ -65,14 +124,14 @@ async function sendMessageStream({ message, history, session_key, onDelta, signa
 }
 
 async function fetchSessions() {
-  const resp = await fetch(`${API_BASE}/api/sessions`);
+  const resp = await fetch(`${API_BASE}/api/sessions`, { headers: { ...authHeaders() } });
   if (!resp.ok) throw new Error("Erro ao carregar sessoes");
   const data = await resp.json();
   return data.sessions;
 }
 
 async function createSession() {
-  const resp = await fetch(`${API_BASE}/api/sessions`, { method: "POST" });
+  const resp = await fetch(`${API_BASE}/api/sessions`, { method: "POST", headers: { ...authHeaders() } });
   if (!resp.ok) throw new Error("Erro ao criar sessao");
   return resp.json();
 }
@@ -80,13 +139,16 @@ async function createSession() {
 async function deleteSession(sessionId) {
   const resp = await fetch(`${API_BASE}/api/sessions/${encodeURIComponent(sessionId)}`, {
     method: "DELETE",
+    headers: { ...authHeaders() },
   });
   if (!resp.ok) throw new Error("Erro ao excluir sessao");
   return resp.json();
 }
 
 async function fetchSessionMessages(sessionId) {
-  const resp = await fetch(`${API_BASE}/api/sessions/${encodeURIComponent(sessionId)}/messages`);
+  const resp = await fetch(`${API_BASE}/api/sessions/${encodeURIComponent(sessionId)}/messages`, {
+    headers: { ...authHeaders() },
+  });
   if (!resp.ok) throw new Error("Erro ao carregar mensagens");
   return resp.json();
 }
@@ -94,6 +156,7 @@ async function fetchSessionMessages(sessionId) {
 async function generateSessionTitle(sessionId) {
   const resp = await fetch(`${API_BASE}/api/sessions/${encodeURIComponent(sessionId)}/title`, {
     method: "POST",
+    headers: { ...authHeaders() },
   });
   if (!resp.ok) return null;
   const data = await resp.json();

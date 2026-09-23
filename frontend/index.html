@@ -102,6 +102,163 @@
         letter-spacing: 0;
       }
 
+      .header-spacer {
+        flex: 1;
+      }
+
+      .header-user {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+
+      .header-email {
+        font-size: 0.8rem;
+        color: var(--muted);
+        max-width: 160px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .header-logout-btn {
+        flex-shrink: 0;
+        background: none;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: var(--muted);
+        transition: background 120ms, color 120ms;
+      }
+
+      .header-logout-btn:hover {
+        background: var(--user-bubble);
+        color: #c0392b;
+      }
+
+      /* ---- Auth Page ---- */
+      .auth-page {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fafafa;
+      }
+
+      .auth-loading {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        font-size: 1rem;
+      }
+
+      .auth-card {
+        width: 100%;
+        max-width: 380px;
+        padding: 40px 32px;
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+        text-align: center;
+      }
+
+      .auth-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0 0 4px;
+        color: var(--text);
+      }
+
+      .auth-subtitle {
+        font-size: 0.9rem;
+        color: var(--muted);
+        margin: 0 0 24px;
+      }
+
+      .auth-error {
+        background: #fff5f5;
+        border: 1px solid #fed7d7;
+        color: #c0392b;
+        padding: 10px 14px;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        margin-bottom: 16px;
+        text-align: left;
+      }
+
+      .auth-form {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .auth-input {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid var(--composer-border);
+        border-radius: 10px;
+        font: inherit;
+        font-size: 0.95rem;
+        color: var(--text);
+        background: var(--bg-page);
+        outline: none;
+        transition: border-color 150ms;
+      }
+
+      .auth-input:focus {
+        border-color: #b0b0b0;
+      }
+
+      .auth-btn {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 10px;
+        background: var(--accent);
+        color: #fff;
+        font: inherit;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 120ms;
+        margin-top: 4px;
+      }
+
+      .auth-btn:hover:not(:disabled) {
+        background: var(--accent-hover);
+      }
+
+      .auth-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .auth-toggle {
+        font-size: 0.85rem;
+        color: var(--muted);
+        margin: 20px 0 0;
+      }
+
+      .auth-toggle a {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      .auth-toggle a:hover {
+        text-decoration: underline;
+      }
+
       /* ---- Sidebar ---- */
       .sidebar {
         width: 260px;
@@ -414,6 +571,7 @@
     <script type="text/babel" src="/frontend/src/MessageContent.jsx"></script>
     <script type="text/babel" src="/frontend/src/Composer.jsx"></script>
     <script type="text/babel" src="/frontend/src/Sidebar.jsx"></script>
+    <script type="text/babel" src="/frontend/src/AuthPage.jsx"></script>
     <script type="text/babel" src="/frontend/src/App.jsx"></script>
   </body>
 </html>

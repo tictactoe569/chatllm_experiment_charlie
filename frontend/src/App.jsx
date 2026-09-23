@@ -15,6 +15,8 @@ function createWelcomeMessage() {
 }
 
 function App() {
+  const [user, setUser] = useState(null); // null = not loaded, { id, email } = logged in
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [sessions, setSessions] = useState([]);
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [messages, setMessages] = useState([createWelcomeMessage()]);
@@ -26,12 +28,22 @@ function App() {
   const abortControllerRef = useRef(null);
   const loadedSessionRef = useRef(null);
 
-  // Load sessions on mount
+  // Check if user is already logged in on mount
   useEffect(() => {
-    fetchSessions()
-      .then(setSessions)
-      .catch(() => {});
+    apiMe().then((u) => {
+      setUser(u);
+      setCheckingAuth(false);
+    });
   }, []);
+
+  // Load sessions when user is authenticated
+  useEffect(() => {
+    if (user) {
+      fetchSessions()
+        .then(setSessions)
+        .catch(() => {});
+    }
+  }, [user]);
 
   const chatHistory = useMemo(
     () => messages.filter((msg) => msg.role === "user" || msg.role === "assistant"),
@@ -124,6 +136,14 @@ function App() {
     }
   };
 
+  const handleLogout = () => {
+    apiLogout();
+    setUser(null);
+    setSessions([]);
+    setCurrentSessionId(null);
+    setMessages([createWelcomeMessage()]);
+  };
+
   const onStop = () => {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
@@ -168,11 +188,9 @@ function App() {
         },
       });
 
-      // If server returned a session_key (first message of new session)
       if (resultKey && !currentKey) {
         loadedSessionRef.current = resultKey;
         setCurrentSessionId(resultKey);
-        // Add to sessions list
         setSessions((prev) => [
           { id: resultKey, title: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
           ...prev,
@@ -182,7 +200,6 @@ function App() {
         scheduleAutoTitle(currentKey);
       }
 
-      // Refresh sessions list
       fetchSessions().then(setSessions).catch(() => {});
 
       setMessages((prev) =>
@@ -218,6 +235,27 @@ function App() {
     }
   };
 
+  // Auth check loading
+  if (checkingAuth) {
+    return (
+      <main className="app-shell">
+        <div className="auth-loading">Carregando...</div>
+      </main>
+    );
+  }
+
+  // Not authenticated — show login/register page
+  if (!user) {
+    return (
+      <AuthPage
+        onAuthSuccess={() => {
+          apiMe().then(setUser);
+        }}
+      />
+    );
+  }
+
+  // Authenticated — show chat
   return (
     <div className="app-shell">
       <Sidebar
@@ -243,6 +281,21 @@ function App() {
             </svg>
           </button>
           <div className="brand">ChatLLM Lab</div>
+          <div className="header-spacer" />
+          {user && (
+            <div className="header-user">
+              <span className="header-email" title={user.email}>
+                {user.email}
+              </span>
+              <button className="header-logout-btn" onClick={handleLogout} title="Sair">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" />
+                  <polyline points="10,12 14,8 10,4" />
+                  <line x1="14" y1="8" x2="6" y2="8" />
+                </svg>
+              </button>
+            </div>
+          )}
         </header>
 
         <section className="messages" aria-live="polite" ref={messagesRef}>
