@@ -1,22 +1,37 @@
 const { useEffect, useMemo, useRef, useState } = React;
 
+let autoTitleTimer = null;
+
 function createMessageId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function createWelcomeMessage() {
+  return {
+    id: createMessageId(),
+    role: "assistant",
+    content: "Bem-vindo ao ChatLLM Lab. Como posso ajudar voce hoje?",
+  };
+}
+
 function App() {
-  const [messages, setMessages] = useState([
-    {
-      id: createMessageId(),
-      role: "assistant",
-      content: "Bem-vindo ao ChatLLM Lab. Como posso ajudar voce hoje?",
-    },
-  ]);
+  const [sessions, setSessions] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [messages, setMessages] = useState([createWelcomeMessage()]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const messagesRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const loadedSessionRef = useRef(null);
+
+  // Load sessions on mount
+  useEffect(() => {
+    fetchSessions()
+      .then(setSessions)
+      .catch(() => {});
+  }, []);
 
   const chatHistory = useMemo(
     () => messages.filter((msg) => msg.role === "user" || msg.role === "assistant"),
@@ -34,6 +49,81 @@ function App() {
     };
   }, []);
 
+  // Auto-generate title after first assistant reply
+  const scheduleAutoTitle = (sessionId) => {
+    if (autoTitleTimer) clearTimeout(autoTitleTimer);
+    autoTitleTimer = setTimeout(async () => {
+      const title = await generateSessionTitle(sessionId);
+      if (title) {
+        setSessions((prev) =>
+          prev.map((s) => (s.id === sessionId ? { ...s, title } : s))
+        );
+      }
+    }, 500);
+  };
+
+  const loadSession = async (sessionId) => {
+    if (busy) return;
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setBusy(false);
+
+    loadedSessionRef.current = sessionId;
+    setCurrentSessionId(sessionId);
+    setError("");
+
+    if (!sessionId) {
+      setMessages([createWelcomeMessage()]);
+      return;
+    }
+
+    try {
+      const msgs = await fetchSessionMessages(sessionId);
+      if (msgs.length === 0) {
+        setMessages([createWelcomeMessage()]);
+      } else {
+        setMessages(
+          msgs.map((m) => ({
+            id: createMessageId(),
+            role: m.role,
+            content: m.content,
+          }))
+        );
+      }
+    } catch (err) {
+      setError("Erro ao carregar historico da sessao.");
+      setMessages([createWelcomeMessage()]);
+    }
+  };
+
+  const handleNewSession = async () => {
+    if (busy) return;
+    try {
+      const session = await createSession();
+      setSessions((prev) => [session, ...prev]);
+      loadedSessionRef.current = session.id;
+      setCurrentSessionId(session.id);
+      setMessages([createWelcomeMessage()]);
+      setError("");
+    } catch (err) {
+      setError("Erro ao criar nova sessao.");
+    }
+  };
+
+  const handleDeleteSession = async (sessionId) => {
+    try {
+      await deleteSession(sessionId);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      if (currentSessionId === sessionId) {
+        loadedSessionRef.current = null;
+        setCurrentSessionId(null);
+        setMessages([createWelcomeMessage()]);
+      }
+    } catch (err) {
+      setError("Erro ao excluir sessao.");
+    }
+  };
+
   const onStop = () => {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
@@ -49,6 +139,8 @@ function App() {
     const userMessage = { id: createMessageId(), role: "user", content: cleaned };
     const assistantMessageId = createMessageId();
 
+    const currentKey = loadedSessionRef.current;
+
     setMessages((prev) => [
       ...prev,
       userMessage,
@@ -60,9 +152,10 @@ function App() {
     abortControllerRef.current = abortController;
 
     try {
-      await sendMessageStream({
+      const resultKey = await sendMessageStream({
         message: cleaned,
         history: chatHistory,
+        session_key: currentKey,
         signal: abortController.signal,
         onDelta: (delta) => {
           setMessages((prev) =>
@@ -74,6 +167,23 @@ function App() {
           );
         },
       });
+
+      // If server returned a session_key (first message of new session)
+      if (resultKey && !currentKey) {
+        loadedSessionRef.current = resultKey;
+        setCurrentSessionId(resultKey);
+        // Add to sessions list
+        setSessions((prev) => [
+          { id: resultKey, title: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+          ...prev,
+        ]);
+        scheduleAutoTitle(resultKey);
+      } else if (currentKey) {
+        scheduleAutoTitle(currentKey);
+      }
+
+      // Refresh sessions list
+      fetchSessions().then(setSessions).catch(() => {});
 
       setMessages((prev) =>
         prev.map((msg) =>
@@ -109,32 +219,54 @@ function App() {
   };
 
   return (
-    <main className="app-shell">
-      <header className="app-header">
-        <div className="brand">ChatLLM Lab</div>
-      </header>
-
-      <section className="messages" aria-live="polite" ref={messagesRef}>
-        <div className="messages-inner">
-          {messages.map((msg) => (
-            <article key={msg.id} className={`bubble ${msg.role}`}>
-              <MessageContent content={msg.content} />
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <Composer
-        text={text}
-        busy={busy}
-        error={error}
-        onChangeText={setText}
-        onSubmit={onSubmit}
-        onStop={onStop}
+    <div className="app-shell">
+      <Sidebar
+        sessions={sessions}
+        currentSessionId={currentSessionId}
+        onSelect={loadSession}
+        onNew={handleNewSession}
+        onDelete={handleDeleteSession}
+        sidebarOpen={sidebarOpen}
       />
 
-      <div className="warning-banner">Lembre-se, você precisa focar no experimento!!!</div>
-    </main>
+      <div className="app-main">
+        <header className="app-header">
+          <button
+            className="sidebar-toggle"
+            onClick={() => setSidebarOpen((v) => !v)}
+            aria-label="Alternar barra lateral"
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <line x1="3" y1="4" x2="15" y2="4" />
+              <line x1="3" y1="9" x2="15" y2="9" />
+              <line x1="3" y1="14" x2="15" y2="14" />
+            </svg>
+          </button>
+          <div className="brand">ChatLLM Lab</div>
+        </header>
+
+        <section className="messages" aria-live="polite" ref={messagesRef}>
+          <div className="messages-inner">
+            {messages.map((msg) => (
+              <article key={msg.id} className={`bubble ${msg.role}`}>
+                <MessageContent content={msg.content} />
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <Composer
+          text={text}
+          busy={busy}
+          error={error}
+          onChangeText={setText}
+          onSubmit={onSubmit}
+          onStop={onStop}
+        />
+
+        <div className="warning-banner">Lembre-se, voce precisa focar no experimento!!!</div>
+      </div>
+    </div>
   );
 }
 
