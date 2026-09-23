@@ -5,25 +5,23 @@
 **Hard rule**: AI agents must not edit this file and must not draft paste-ready content for it.
 
 ## R — Repeat (The Problem)
-_State the problem in your own words. Confirm that you share the same mental model of the goal._
-
+Quero uma barra lateral que tenha um botão para criar um novo chat e que todos os meus chats (atual ou psssados) sejam listados no painel, pára caso eu clique nele, eles sejam carregados novamente com suas mensagens antigas e eu possa contnuar. 
 ## E — Examples
-_Provide concrete inputs and expected outputs that demonstrate the correctness. Base them on observable behavior._
 
-- **Happy Path Input**: ...
-  **Output**: ...
 
-- **Edge Case Input**: ...
-  **Output**: ...
+- Happy path Input: Entro no chat e converso com o chat que abriu
+Output: O sistema nomeia a conversa nova e coloca ela na side bar
+
+- Edge Case Input: Entro no chat e crio várias novas conversas.
+Output: O chat salva varias converasas em branco com o mesmo nome.
 
 ## A — Approach
-_Describe your high-level strategy conceptually. How did you design the solution?_
+Criei um novo modelo no banco de dados para guardar o historico das sessoes, agora acessadas por ids e criei rotas para poder manipular as sessões, podendo criar, deletar e carregar as sessões
 
 ## C — Code
-_Identify the most critical code changes, format as actual files, functions, or methods. Justify the intent of your design choices rather than just acknowledging the syntax changes._
-
+No model a criação do ChatSession, criação de endpoints  rest no sessions.py, o chat.py alterado para utilizar session_key e alterações no front end para criação do botão de deletar no hover, fazer o painel colapsavel e fazer os botões funcionarem. 
 ## T — Tests
-_Explain how the solution was validated, pointing to the actual test files, functions, or methods. Document any manual or automated tests._
+Os testes automaticos foram rodados e passaram e eu testei manualmente alguns fluxos no chat, como iniciar uma conversa, criar varias novas conversas, deletar conversas, voltar a conversas antigas...
 
 ## O — Optimize
-_Address Big(O) complexity, note that sometimes it doesn't apply, trade-offs, constraints, and opportunities for future improvement._
+
