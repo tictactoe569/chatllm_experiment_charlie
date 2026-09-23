@@ -6,14 +6,16 @@
 
 ## The Problem
 _State clearly what you are trying to achieve and the architectural constraints, avoiding implementation specifics of HOW to do it. Focus on WHAT and WHY._
+É preciso implementar um barra de sessoes de chat e titulo automatico para que o usuario possa alternar sessoes, mantendo o historico individual de cada um.
 
 ## Steps
-- [ ] _Decompose the problem into actionable logical steps._
-- [ ] _Each step should represent a verifiable piece of work._
+- Entender o que deve ser feito
+- Responder o TODO
+- Pedir ao agente de IA entender e fazer a tarefa
+- Verificar se está tudo de acordo
 
 ## Success Looks Like
-- [ ] _Define rigorous, observable criteria for success. E.g., The endpoint returns 200 OK with the user object, NOT Code compiles_
-
+- Todos os testes forem bem sucedidos e o agente de IA dizer a tarefa foi concluída.
 ## Notes
 - [ ] _Any specific edge cases, libraries to consider, or potential pitfalls._
 

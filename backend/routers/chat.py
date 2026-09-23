@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session
 
 from backend.config import OPENROUTER_MODEL_DEFAULT
 from backend.database import get_db
-from backend.models import ChatMessage
+from backend.models import ChatMessage, ChatSession
+from backend.routers.auth import _get_current_user
+from backend.routers.sessions import generate_session_title
 from backend.schemas.chat import ChatRequest, ChatResponse
 from backend.services.openrouter import OpenRouterConfigError, generate_reply, stream_reply
 
@@ -35,11 +37,20 @@ async def chat(payload: ChatRequest, db: Session = Depends(get_db)) -> ChatRespo
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     resolved_model = payload.model or model_name or OPENROUTER_MODEL_DEFAULT
+    session_key = payload.session_id or "default"
 
-    # Persistimos apenas o fluxo basico de mensagens; sessoes e titulos sao tarefa do participante.
-    db.add(ChatMessage(session_key="default", role="user", content=payload.message, model=resolved_model))
-    db.add(ChatMessage(session_key="default", role="assistant", content=reply, model=resolved_model))
+    db.add(ChatMessage(session_key=session_key, role="user", content=payload.message, model=resolved_model))
+    db.add(ChatMessage(session_key=session_key, role="assistant", content=reply, model=resolved_model))
     db.commit()
+
+    # Auto-title: se a sessao existe e nao tem titulo, gera um
+    if payload.session_id:
+        session = db.query(ChatSession).filter(ChatSession.id == payload.session_id).first()
+        if session and not session.title:
+            title = await generate_session_title(user_message=payload.message, reply=reply)
+            if title:
+                session.title = title
+                db.commit()
 
     return ChatResponse(reply=reply, model=resolved_model)
 
@@ -50,6 +61,8 @@ async def chat_stream(payload: ChatRequest, db: Session = Depends(get_db)) -> St
 
     async def event_generator():
         full_reply = ""
+        title_generated = False
+        session_key = payload.session_id or "default"
         try:
             async for delta in stream_reply(
                 user_message=payload.message,
@@ -68,7 +81,7 @@ async def chat_stream(payload: ChatRequest, db: Session = Depends(get_db)) -> St
         if full_reply.strip():
             db.add(
                 ChatMessage(
-                    session_key="default",
+                    session_key=session_key,
                     role="user",
                     content=payload.message,
                     model=resolved_model,
@@ -76,7 +89,7 @@ async def chat_stream(payload: ChatRequest, db: Session = Depends(get_db)) -> St
             )
             db.add(
                 ChatMessage(
-                    session_key="default",
+                    session_key=session_key,
                     role="assistant",
                     content=full_reply,
                     model=resolved_model,
@@ -84,7 +97,17 @@ async def chat_stream(payload: ChatRequest, db: Session = Depends(get_db)) -> St
             )
             db.commit()
 
-        yield f"data: {json.dumps({'done': True}, ensure_ascii=True)}\n\n"
+        # Auto-title: se a sessao existe e nao tem titulo, gera um
+        if payload.session_id:
+            session = db.query(ChatSession).filter(ChatSession.id == payload.session_id).first()
+            if session and not session.title:
+                title = await generate_session_title(user_message=payload.message, reply=full_reply)
+                if title:
+                    session.title = title
+                    title_generated = True
+                    db.commit()
+
+        yield f"data: {json.dumps({'done': True, 'titleGenerated': title_generated}, ensure_ascii=True)}\n\n"
 
     return StreamingResponse(
         event_generator(),
