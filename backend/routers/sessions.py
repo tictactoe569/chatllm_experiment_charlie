@@ -9,16 +9,18 @@ from sqlalchemy.orm import Session
 
 from backend.config import OPENROUTER_API_KEY, OPENROUTER_API_URL, OPENROUTER_MODEL_DEFAULT
 from backend.database import get_db
-from backend.models import ChatMessage, ChatSession
+from backend.models import ChatMessage, ChatSession, User
+from backend.routers.auth import require_auth
 from backend.schemas.chat import SessionDeleteResponse, SessionListResponse, SessionResponse
 
 router = APIRouter()
 
 
 @router.get("/api/sessions", response_model=SessionListResponse)
-def list_sessions(db: Session = Depends(get_db)):
+def list_sessions(current_user: User = Depends(require_auth), db: Session = Depends(get_db)):
     sessions = (
         db.query(ChatSession)
+        .filter(ChatSession.user_id == current_user.id)
         .order_by(ChatSession.updated_at.desc())
         .all()
     )
@@ -26,8 +28,8 @@ def list_sessions(db: Session = Depends(get_db)):
 
 
 @router.post("/api/sessions", response_model=SessionResponse, status_code=201)
-def create_session(db: Session = Depends(get_db)):
-    session = ChatSession(id=str(uuid.uuid4()))
+def create_session(current_user: User = Depends(require_auth), db: Session = Depends(get_db)):
+    session = ChatSession(id=str(uuid.uuid4()), user_id=current_user.id)
     db.add(session)
     db.commit()
     db.refresh(session)
@@ -35,8 +37,8 @@ def create_session(db: Session = Depends(get_db)):
 
 
 @router.delete("/api/sessions/{session_id}", response_model=SessionDeleteResponse)
-def delete_session(session_id: str, db: Session = Depends(get_db)):
-    session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+def delete_session(session_id: str, current_user: User = Depends(require_auth), db: Session = Depends(get_db)):
+    session = db.query(ChatSession).filter(ChatSession.id == session_id, ChatSession.user_id == current_user.id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Sessao nao encontrada")
 
@@ -47,8 +49,8 @@ def delete_session(session_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/api/sessions/{session_id}/messages")
-def get_session_messages(session_id: str, db: Session = Depends(get_db)):
-    session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+def get_session_messages(session_id: str, current_user: User = Depends(require_auth), db: Session = Depends(get_db)):
+    session = db.query(ChatSession).filter(ChatSession.id == session_id, ChatSession.user_id == current_user.id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Sessao nao encontrada")
 
@@ -62,8 +64,8 @@ def get_session_messages(session_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/api/sessions/{session_id}/title")
-async def auto_title(session_id: str, db: Session = Depends(get_db)):
-    session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+async def auto_title(session_id: str, current_user: User = Depends(require_auth), db: Session = Depends(get_db)):
+    session = db.query(ChatSession).filter(ChatSession.id == session_id, ChatSession.user_id == current_user.id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Sessao nao encontrada")
 

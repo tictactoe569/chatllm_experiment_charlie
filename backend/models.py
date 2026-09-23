@@ -22,6 +22,7 @@ class ChatSession(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    user_id: Mapped[int] = mapped_column(Integer, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 

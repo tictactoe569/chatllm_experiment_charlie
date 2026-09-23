@@ -9,6 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
+from sqlalchemy import inspect, text
+
 from backend.database import Base, engine
 from backend.routers.auth import router as auth_router
 from backend.routers.chat import router as chat_router
@@ -16,6 +18,14 @@ from backend.routers.sessions import router as sessions_router
 
 
 Base.metadata.create_all(bind=engine)
+
+# Migration: add user_id to chat_sessions if missing
+inspector = inspect(engine)
+cols = {c["name"] for c in inspector.get_columns("chat_sessions")}
+if "user_id" not in cols:
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE chat_sessions ADD COLUMN user_id INTEGER NOT NULL DEFAULT 0"))
+        conn.commit()
 
 app = FastAPI(title="ChatLLM Experiment API")
 
