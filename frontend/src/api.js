@@ -1,10 +1,12 @@
 const API_BASE = window.location.origin;
 
-async function sendMessageStream({ message, history, onDelta, signal }) {
+// ── Chat ──
+
+async function sendMessageStream({ message, history, session_id, onDelta, signal }) {
   const response = await fetch(`${API_BASE}/api/chat/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ message, history, session_id }),
     signal,
   });
 
@@ -21,6 +23,7 @@ async function sendMessageStream({ message, history, onDelta, signal }) {
   const reader = response.body.getReader();
   const decoder = new TextDecoder("utf-8");
   let buffer = "";
+  let lastSessionId = null;
 
   while (true) {
     const { value, done } = await reader.read();
@@ -53,6 +56,48 @@ async function sendMessageStream({ message, history, onDelta, signal }) {
       if (payload.delta) {
         onDelta(payload.delta);
       }
+
+      if (payload.session_id) {
+        lastSessionId = payload.session_id;
+      }
+
+      if (payload.done) {
+        return lastSessionId;
+      }
     }
   }
+
+  return lastSessionId;
+}
+
+// ── Sessions ──
+
+async function listSessions() {
+  const response = await fetch(`${API_BASE}/api/sessions`);
+  if (!response.ok) throw new Error("Erro ao listar sessoes");
+  const data = await response.json();
+  return data.sessions;
+}
+
+async function createSession() {
+  const response = await fetch(`${API_BASE}/api/sessions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+  if (!response.ok) throw new Error("Erro ao criar sessao");
+  return response.json();
+}
+
+async function deleteSession(sessionId) {
+  const response = await fetch(`${API_BASE}/api/sessions/${sessionId}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) throw new Error("Erro ao deletar sessao");
+}
+
+async function getSessionMessages(sessionId) {
+  const response = await fetch(`${API_BASE}/api/chat/history/${sessionId}`);
+  if (!response.ok) throw new Error("Erro ao carregar historico");
+  return response.json();
 }

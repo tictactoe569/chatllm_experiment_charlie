@@ -35,11 +35,16 @@ class TestChatRequest:
         req = ChatRequest(message="Hello")
         assert req.message == "Hello"
         assert req.model is None
+        assert req.session_id is None
         assert req.history == []
 
     def test_valid_request_with_model(self):
         req = ChatRequest(message="Hi", model="openai/gpt-4o")
         assert req.model == "openai/gpt-4o"
+
+    def test_valid_request_with_session_id(self):
+        req = ChatRequest(message="Hi", session_id=42)
+        assert req.session_id == 42
 
     def test_valid_request_with_history(self):
         history = [
@@ -65,6 +70,7 @@ class TestChatRequest:
 
 class TestChatResponse:
     def test_valid_response(self):
-        resp = ChatResponse(reply="Resposta do modelo.", model="google/gemma-4-31b-it")
+        resp = ChatResponse(reply="Resposta do modelo.", model="google/gemma-4-31b-it", session_id=1)
         assert resp.reply == "Resposta do modelo."
         assert resp.model == "google/gemma-4-31b-it"
+        assert resp.session_id == 1
