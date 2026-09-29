@@ -4,6 +4,48 @@ function createMessageId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function AuthForm({ onAuth }) {
+  const [mode, setMode] = useState("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    try {
+      const endpoint = mode === "login" ? "/api/auth/login" : "/api/auth/register";
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.detail || "Erro");
+      }
+      onAuth();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  return (
+    <div className="auth-overlay">
+      <form className="auth-form" onSubmit={handleSubmit}>
+        <h2>{mode === "login" ? "Entrar" : "Cadastrar"}</h2>
+        {error && <div className="auth-error">{error}</div>}
+        <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <input type="password" placeholder="Senha" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+        <button type="submit">{mode === "login" ? "Entrar" : "Cadastrar"}</button>
+        <button type="button" className="auth-toggle" onClick={() => setMode(mode === "login" ? "register" : "login")}>
+          {mode === "login" ? "Nao tem conta? Cadastre-se" : "Ja tem conta? Entre"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function App() {
   const [messages, setMessages] = useState([
     {
@@ -18,13 +60,48 @@ function App() {
   const [sessions, setSessions] = useState([]);
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
   const messagesRef = useRef(null);
   const abortControllerRef = useRef(null);
 
-  // Load sessions on mount
   useEffect(() => {
-    loadSessions();
+    checkAuth();
   }, []);
+
+  const checkAuth = async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.authenticated) {
+          setAuthenticated(true);
+          setUserEmail(data.email);
+          loadSessions();
+        }
+      }
+    } catch {}
+  };
+
+  const handleAuth = () => {
+    setAuthenticated(true);
+    loadSessions();
+  };
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    setAuthenticated(false);
+    setUserEmail("");
+    setSessions([]);
+    setCurrentSessionId(null);
+    setMessages([
+      {
+        id: createMessageId(),
+        role: "assistant",
+        content: "Bem-vindo ao ChatLLM Lab. Como posso ajudar voce hoje?",
+      },
+    ]);
+  };
 
   const loadSessions = async () => {
     try {
@@ -165,7 +242,6 @@ function App() {
         setCurrentSessionId(newSessionId);
       }
 
-      // Reload sessions to get updated titles
       loadSessions();
 
       setMessages((prev) =>
@@ -201,9 +277,12 @@ function App() {
     }
   };
 
+  if (!authenticated) {
+    return <AuthForm onAuth={handleAuth} />;
+  }
+
   return (
     <div className="app-layout">
-      {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? "open" : "closed"}`}>
         <div className="sidebar-header">
           <button className="sidebar-toggle" onClick={() => setSidebarOpen(false)} aria-label="Fechar sidebar">
@@ -241,9 +320,12 @@ function App() {
             </div>
           ))}
         </div>
+        <div className="sidebar-footer">
+          <span className="sidebar-email">{userEmail}</span>
+          <button className="logout-btn" onClick={handleLogout}>Sair</button>
+        </div>
       </aside>
 
-      {/* Sidebar open button (when closed) */}
       {!sidebarOpen && (
         <button className="sidebar-open-btn" onClick={() => setSidebarOpen(true)} aria-label="Abrir sidebar">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -254,7 +336,6 @@ function App() {
         </button>
       )}
 
-      {/* Main content */}
       <main className="app-shell">
         <header className="app-header">
           <div className="brand">ChatLLM Lab</div>

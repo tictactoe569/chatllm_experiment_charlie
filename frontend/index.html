@@ -407,6 +407,107 @@
         background: #f0f0f0;
       }
 
+      .sidebar-footer {
+        flex-shrink: 0;
+        padding: 12px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .sidebar-email {
+        font-size: 0.8rem;
+        color: var(--muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .logout-btn {
+        flex-shrink: 0;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text);
+        font-size: 0.8rem;
+        padding: 4px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      .logout-btn:hover {
+        background: #e9e9eb;
+      }
+
+      /* ── Auth ── */
+      .auth-overlay {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-page);
+      }
+
+      .auth-form {
+        width: 100%;
+        max-width: 360px;
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .auth-form h2 {
+        margin: 0 0 8px;
+        font-size: 1.3rem;
+        font-weight: 600;
+      }
+
+      .auth-form input {
+        padding: 10px 14px;
+        border: 1px solid var(--composer-border);
+        border-radius: 10px;
+        font: inherit;
+        font-size: 0.95rem;
+        outline: none;
+      }
+
+      .auth-form input:focus {
+        border-color: #b0b0b0;
+      }
+
+      .auth-form button[type="submit"] {
+        padding: 10px;
+        border: none;
+        border-radius: 10px;
+        background: var(--accent);
+        color: #fff;
+        font: inherit;
+        font-size: 0.95rem;
+        cursor: pointer;
+      }
+
+      .auth-form button[type="submit"]:hover {
+        background: var(--accent-hover);
+      }
+
+      .auth-toggle {
+        border: none;
+        background: transparent;
+        color: var(--muted);
+        font: inherit;
+        font-size: 0.85rem;
+        cursor: pointer;
+        text-decoration: underline;
+      }
+
+      .auth-error {
+        color: #c0392b;
+        font-size: 0.85rem;
+      }
+
       @media (max-width: 640px) {
         .sidebar { width: 220px; min-width: 220px; }
         .bubble.user { max-width: 90%; }
